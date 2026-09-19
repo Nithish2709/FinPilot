@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #111319;
+  --color-surface-dim: #111319;
+  --color-surface-bright: #37393f;
+  --color-surface-container-lowest: #0c0e13;
+  --color-surface-container-low: #191c21;
+  --color-surface-container: #1d2025;
+  --color-surface-container-high: #282a30;
+  --color-surface-container-highest: #33353b;
+  --color-on-surface: #e2e2ea;
+  --color-on-surface-variant: #b9cacb;
+  --color-inverse-surface: #e2e2ea;
+  --color-inverse-on-surface: #2e3036;
+  --color-outline: #849495;
+  --color-outline-variant: #3b494b;
+  --color-surface-tint: #00dbe9;
+  --color-primary: #dbfcff;
+  --color-on-primary: #00363a;
+  --color-primary-container: #00f0ff;
+  --color-on-primary-container: #006970;
+  --color-inverse-primary: #006970;
+  --color-secondary: #b0c6ff;
+  --color-on-secondary: #002d6e;
+  --color-secondary-container: #0068ed;
+  --color-on-secondary-container: #f2f3ff;
+  --color-tertiary: #d8ffe5;
+  --color-on-tertiary: #003822;
+  --color-tertiary-container: #32f6a7;
+  --color-on-tertiary-container: #006d46;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-primary-fixed: #7df4ff;
+  --color-primary-fixed-dim: #00dbe9;
+  --color-on-primary-fixed: #002022;
+  --color-on-primary-fixed-variant: #004f54;
+  --color-secondary-fixed: #d9e2ff;
+  --color-secondary-fixed-dim: #b0c6ff;
+  --color-on-secondary-fixed: #001945;
+  --color-on-secondary-fixed-variant: #00429b;
+  --color-tertiary-fixed: #4dffb1;
+  --color-tertiary-fixed-dim: #00e296;
+  --color-on-tertiary-fixed: #002112;
+  --color-on-tertiary-fixed-variant: #005233;
+  --color-background: #111319;
+  --color-on-background: #e2e2ea;
+  --color-surface-variant: #33353b;
+
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-surface-container-lowest);
+    color: var(--color-on-surface);
+  }
+}
+
+/* Custom scrollbar hiding & smooth UI styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0c0e13;
+}
+::-webkit-scrollbar-thumb {
+  background: #282a30;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b494b;
+}
+

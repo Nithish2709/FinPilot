@@ -1,0 +1,6 @@
+{
+  "name": "FinPilot - Autonomous Financial Intelligence",
+  "description": "Deterministic stress-testing, cashflow forecasting, scenario modeling, and neural document intelligence with Tailwind CSS and Lucide icons.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
