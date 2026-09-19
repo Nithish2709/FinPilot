@@ -4,15 +4,64 @@ FinPilot is a production-oriented personal finance decision-support system desig
 
 ---
 
-## Current Implementation: Stage 1, Stage 2, Stage 3, Stage 4, and Stage 5
+## Current Implementation: Stages 1, 2, 3, 4, 5, 6, 7, and 8
 
-This repository implements **Stage 1: Project Foundation**, **Stage 2: Database + Authentication**, **Stage 3: Financial Data Ingestion**, **Stage 4: Financial Intelligence Engine**, and **Stage 5: Chat + Persistent Conversation History**.
+This repository implements **Stage 1: Project Foundation**, **Stage 2: Database + Authentication**, **Stage 3: Financial Data Ingestion**, **Stage 4: Financial Intelligence Engine**, **Stage 5: Chat + Persistent Conversation History**, **Stage 6: RAG + pgvector Semantic Document Retrieval**, **Stage 7: Local LLM + Tool-Calling Agent**, and **Stage 8: API LLM Fallback + Reliability**.
 
 ### Core Architecture & Guiding Principles
 
-- **Separation of Storage vs AI Reasoning**: Chat storage, conversation lifecycle, and context window assembly are implemented as an independent foundation. AI agent reasoning will be connected in a later stage.
-- **Strict User Isolation**: All financial entities, engine calculations, conversations, messages, and summaries are strictly scoped to the authenticated user retrieved from JWT credentials via `get_current_user()`.
-- **Deterministic Financial Math**: Financial calculations are **never** delegated to an LLM or ML model. Exact Python `Decimal` and database `Numeric(18, 2)` are used everywhere.
+- **Local-First with Robust Fallback**: Local Qwen1.5-1B-Instruct model handles inference first. Fallback to API LLMs occurs strictly on failure conditions (`LOCAL_TIMEOUT`, `LOCAL_UNAVAILABLE`, `LOCAL_PARSE_ERROR`, etc.) with in-memory circuit breaker protection.
+- **Controlled Structured Tool Calling**: Local & API models only understand user intent, extract arguments, and formulate final explanations. They **never** compute financial math directly.
+- **Strict User Isolation**: All tool calls receive the authenticated user ID strictly injected by application code from `current_user.id`. The model never generates or controls user identity.
+- **Deterministic Financial Math**: Financial computations (totals, cashflow, category breakdowns, budgets, obligations, purchase projections) are executed exclusively by Python and PostgreSQL.
+- **Security & Secret Shielding**: Authorization bearer tokens, API keys, and sensitive secrets are automatically sanitized (`Token_Redacted`) before reaching external endpoints.
+
+---
+
+## Stage 8: API LLM Fallback + Reliability
+ 
+FinPilot features a resilient, dual-layer LLM inference routing architecture:
+- **`LLMProvider` Abstraction (`app/agent/llm_provider.py`)**: Abstract interface enforcing asynchronous `generate_with_tools` returning standardized `LLMResult` payloads.
+- **`QwenLLMProvider` (`app/agent/qwen_provider.py`)**: Primary local model provider wrapping Qwen1.5-1B-Instruct.
+- **`ApiLLMProvider` (`app/agent/api_provider.py`)**: Fallback provider supporting OpenAI-compatible remote endpoints. Includes built-in token masking to ensure sensitive credentials (such as user JWT tokens) are never leaked in prompts or outbound headers.
+- **`CircuitBreaker` (`app/agent/circuit_breaker.py`)**: In-memory state machine (`CLOSED`, `OPEN`, `HALF_OPEN`) tracking consecutive failures, tripping to avoid cascading outages, and resetting after configurable cooldown intervals.
+- **`LLMRouter` (`app/agent/llm_router.py`)**: Central router orchestrating local-first routing, parsing retries (`MAX_LOCAL_RETRIES`), granular fallback condition tagging (`LOCAL_TIMEOUT`, `LOCAL_UNAVAILABLE`, `LOCAL_PARSE_ERROR`, etc.), and circuit breaker trips.
+- **Audit & Metadata Tracing**: Logs exact model provenance, token usage, latency, and whether fallback occurred in persistent assistant message metadata.
+
+---
+
+## Stage 7: Local LLM + Tool-Calling Agent
+
+FinPilot features an application-controlled tool-calling agent orchestrator:
+- **`QwenClient` (`app/agent/qwen_client.py`)**: Model abstraction connecting to local inference endpoints (vLLM, Ollama, llama.cpp) with a deterministic fallback simulator for offline testing.
+- **`ToolRegistry` (`app/agent/tool_registry.py`)**: Registers 9 core financial & RAG tools with Pydantic argument schemas:
+  1. `get_monthly_summary`: Monthly income, expenses, and cashflow.
+  2. `get_transactions`: Filtered user transactions.
+  3. `get_category_spending`: Category spending breakdown and percentages.
+  4. `get_recurring_payments`: Detected active subscriptions.
+  5. `get_upcoming_obligations`: Projected upcoming bills.
+  6. `get_budget_status`: Budget thresholds (`ON_TRACK`, `NEAR_LIMIT`, `OVER_BUDGET`).
+  7. `get_goal_status`: Savings goals and required monthly savings.
+  8. `analyze_purchase`: Prospective purchase impact on balances and buffer.
+  9. `search_financial_documents`: Stage 6 RAG semantic retrieval on statements.
+- **`ToolExecutor` (`app/agent/tool_executor.py`)**: Validates model tool arguments via Pydantic, securely injects authenticated `user_id`, and executes deterministic underlying services.
+- **`AgentService` (`app/agent/agent_service.py`)**: Executes prompt assembly, Qwen inference, tool call execution, parse-retry loops, and final answer synthesis, recording latency and `model_used` (`local:qwen1.5-1b-instruct`).
+- **Chat Persistence**: Assistant messages are stored permanently in the database with strict sequence ordering.
+
+---
+
+## Stage 6: RAG + pgvector Semantic Document Retrieval
+
+FinPilot provides a user-isolated semantic document retrieval pipeline:
+- **`document_chunks` Model (`app/models/document_chunk.py`)**: Stores chunked text, sequence `chunk_index`, metadata JSONB, and dense vector embeddings (`VECTOR(384)` with fallback compatibility).
+- **Alembic Migration (`005_stage6_pgvector_document_chunks.py`)**: Enables PostgreSQL `vector` extension and creates HNSW/IVFFlat cosine similarity indexes.
+- **Embedding Provider Abstraction (`app/services/embeddings/`)**: Abstract `EmbeddingProvider` interface with a cached local embedding provider loading once without per-request overhead.
+- **Text Cleaning & Chunking (`app/services/chunking_service.py`)**: Normalizes whitespace and broken layouts, applying sliding window chunking with configurable `chunk_size` (default: 500) and `chunk_overlap` (default: 100).
+- **Document Processing Service (`app/services/document_processing_service.py`)**: Idempotently extracts text across PDF, XLSX, and CSV statement documents, chunks content, generates embeddings, and bulk stores chunks.
+- **Retrieval Service (`app/services/retrieval_service.py`)**: Scopes every query strictly by authenticated `user_id`, applies cosine vector distance, enforces configurable similarity thresholds, and returns top-K evidence results.
+
+### Stage 6 API Endpoints
+- `POST /api/v1/documents/search`: Authenticated semantic search across statement chunks returning top-K evidence with similarity scores and page metadata.
 
 ---
 

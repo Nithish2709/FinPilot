@@ -17,6 +17,7 @@ from app.schemas.chat import (
     MessageListResponse,
     MessageResponse,
 )
+from app.agent.agent_service import AgentService
 from app.services.context_service import ContextService
 
 
@@ -138,18 +139,36 @@ class ChatService:
             sequence_number=user_seq,
         )
 
-        # 2. Allocate next sequence number for placeholder ASSISTANT message
+        # 2. Run local Qwen tool-calling agent loop
+        agent_svc = AgentService()
+        try:
+            agent_result = await agent_svc.process_message(
+                db=db,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                user_message=data.content,
+            )
+            asst_content = agent_result["answer"]
+            model_identifier = agent_result["model_used"]
+            msg_metadata = agent_result.get("metadata")
+        except Exception as e:
+            asst_content = "I encountered an error retrieving your financial data. Please try again."
+            model_identifier = f"local:{cls.PLACEHOLDER_ASSISTANT_CONTENT[:5]}"
+            msg_metadata = {"error": str(e)}
+
+        # 3. Allocate next sequence number for persistent ASSISTANT message
         asst_seq = user_seq + 1
         asst_msg = await MessageRepository.create_message(
             db=db,
             conversation_id=conversation_id,
             role=MessageRole.ASSISTANT.value,
-            content=cls.PLACEHOLDER_ASSISTANT_CONTENT,
+            content=asst_content,
             sequence_number=asst_seq,
-            model_used=None,
+            model_used=model_identifier,
+            metadata=msg_metadata,
         )
 
-        # 3. Touch conversation updated_at
+        # 4. Touch conversation updated_at
         await ConversationRepository.touch_updated_at(db, conversation_id)
 
         return (

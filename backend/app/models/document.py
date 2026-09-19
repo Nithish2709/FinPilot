@@ -12,6 +12,7 @@ from app.core.database import Base
 if TYPE_CHECKING:
     from app.models.user import User
     from app.models.transaction import Transaction
+    from app.models.document_chunk import DocumentChunk
 
 
 class DocumentStatus(str, enum.Enum):
@@ -102,4 +103,10 @@ class Document(Base):
         "Transaction",
         back_populates="source_document",
         cascade="all, delete-orphan",
+    )
+    chunks: Mapped[List["DocumentChunk"]] = relationship(
+        "DocumentChunk",
+        back_populates="document",
+        cascade="all, delete-orphan",
+        order_by="DocumentChunk.chunk_index.asc()",
     )

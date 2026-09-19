@@ -44,7 +44,7 @@ class MessageCreate(BaseModel):
 
 
 class MessageResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: uuid.UUID
     conversation_id: uuid.UUID
@@ -52,8 +52,9 @@ class MessageResponse(BaseModel):
     content: str
     sequence_number: int
     model_used: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = Field(None, alias="metadata_")
+    metadata: Optional[Dict[str, Any]] = Field(None, alias="metadata_", serialization_alias="metadata")
     created_at: datetime
+
 
 
 class MessageListResponse(BaseModel):

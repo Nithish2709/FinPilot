@@ -12,8 +12,11 @@ from app.models.user import User
 from app.repositories.account_repository import AccountRepository
 from app.repositories.document_repository import DocumentRepository
 from app.schemas.document import DocumentDetailResponse, DocumentResponse
+from app.schemas.retrieval import DocumentSearchRequest, DocumentSearchResponse
+from app.services.document_processing_service import DocumentProcessingService
 from app.services.ingestion.ingestion_service import IngestionService
 from app.services.ingestion.storage import StorageManager
+from app.services.retrieval_service import RetrievalService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -85,6 +88,18 @@ async def upload_document(
         account_id=account_id,
     )
 
+    # 6. Process document for RAG chunking and vector storage
+    try:
+        doc_proc_service = DocumentProcessingService()
+        await doc_proc_service.process_document(
+            db=db,
+            document=processed_doc,
+            file_path=abs_path,
+        )
+    except Exception:
+        # Non-fatal to ingestion if RAG chunking fails on non-standard formats
+        pass
+
     return DocumentResponse(
         document_id=processed_doc.id,
         filename=processed_doc.filename,
@@ -95,6 +110,29 @@ async def upload_document(
         duplicate_records=processed_doc.duplicate_records,
         error_message=processed_doc.error_message,
         created_at=processed_doc.created_at,
+    )
+
+
+@router.post(
+    "/search",
+    response_model=DocumentSearchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Semantic document search",
+    description="Performs semantic vector search across document chunks strictly scoped to the authenticated user.",
+)
+async def search_documents(
+    payload: DocumentSearchRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DocumentSearchResponse:
+    retrieval_service = RetrievalService()
+    return await retrieval_service.search_documents(
+        db=db,
+        user_id=current_user.id,
+        query=payload.query,
+        top_k=payload.top_k,
+        similarity_threshold=payload.similarity_threshold,
+        document_id=payload.document_id,
     )
 
 

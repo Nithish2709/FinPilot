@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +29,38 @@ class Settings(BaseSettings):
 
     # Stage 5 Chat & Context Management
     CHAT_CONTEXT_MESSAGE_LIMIT: int = 20
+
+    # Stage 6 RAG & pgvector Configuration
+    EMBEDDING_PROVIDER: str = "local"
+    EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    EMBEDDING_DIMENSION: int = 384
+    CHUNK_SIZE: int = 500
+    CHUNK_OVERLAP: int = 100
+    RETRIEVAL_TOP_K: int = 5
+    SIMILARITY_THRESHOLD: float = 0.5
+
+    # Stage 7 Local LLM + Tool-Calling Agent Configuration
+    LLM_PROVIDER: str = "local"
+    LOCAL_LLM_MODEL: str = "Qwen/Qwen1.5-1B-Instruct"
+    LOCAL_LLM_BASE_URL: Optional[str] = "http://localhost:8000/v1"
+    LOCAL_LLM_TIMEOUT: float = 30.0
+    LOCAL_LLM_TEMPERATURE: float = 0.2
+    LOCAL_LLM_MAX_TOKENS: int = 512
+    MAX_TOOL_CALLS: int = 3
+    MAX_PARSE_RETRIES: int = 2
+
+    # Stage 8 API LLM Fallback + Reliability Configuration
+    LLM_PRIMARY_PROVIDER: str = "local"
+    API_FALLBACK_ENABLED: bool = True
+    API_LLM_PROVIDER: str = "openai_compatible"
+    API_LLM_MODEL: str = "gpt-3.5-turbo"
+    API_LLM_API_KEY: Optional[str] = None
+    API_LLM_BASE_URL: Optional[str] = "https://api.openai.com/v1"
+    API_LLM_TIMEOUT: float = 30.0
+    MAX_LOCAL_RETRIES: int = 2
+    MAX_API_RETRIES: int = 1
+    CIRCUIT_FAILURE_THRESHOLD: int = 3
+    CIRCUIT_COOLDOWN_SECONDS: float = 30.0
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),

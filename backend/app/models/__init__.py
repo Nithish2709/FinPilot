@@ -4,6 +4,7 @@ from app.models.budget import Budget
 from app.models.conversation import Conversation
 from app.models.conversation_summary import ConversationSummary
 from app.models.document import Document, DocumentStatus
+from app.models.document_chunk import DocumentChunk, VectorType
 from app.models.goal import Goal
 from app.models.message import Message, MessageRole
 from app.models.recurring_payment import RecurringFrequency, RecurringPayment, RecurringStatus
@@ -18,6 +19,8 @@ __all__ = [
     "Account",
     "Document",
     "DocumentStatus",
+    "DocumentChunk",
+    "VectorType",
     "Transaction",
     "TransactionType",
     "Budget",
