@@ -1,0 +1,8 @@
+Date,Description,Debit,Credit,Reference
+2026-09-01,Swiggy Order #8921,450.00,,UPI-12345
+2026-09-02,Salary Monthly Credit,,75000.00,SAL-SEP-01
+2026-09-03,Amazon Refund - Shoes,,1999.00,REF-AMZ-99
+2026-09-04,Netflix Subscription,649.00,,NETFLIX-M1
+2026-09-04,Netflix Subscription,649.00,,NETFLIX-M1
+2026-09-05,,250.00,,
+2026-09-06,Coffee Cafe Day,INVALID_AMT,,CCD-987
