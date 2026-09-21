@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   UploadCloud, 
@@ -12,41 +12,76 @@ import {
   Download,
   Sparkles,
   RefreshCw,
-  Cpu
+  Cpu,
+  Layers
 } from 'lucide-react';
-import { TransactionRecord } from '../types';
+import { documentsApi } from '../api/documents';
+import { DocumentRecord, DocumentChunkResult, TransactionRecord } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 export const FinancialDocumentsView: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const [documents, setDocuments] = useState<DocumentRecord[]>([]);
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const initialTransactions: TransactionRecord[] = [
-    { id: 'TX-9401', merchant: 'Tata Power Energy', category: 'Utilities', amount: 3420, date: '18 Aug, 2025', account: 'HDFC Salary ••4920' },
-    { id: 'TX-9402', merchant: 'Swiggy Gourmet Delivery', category: 'Food & Dining', amount: 1426, date: '17 Aug, 2025', account: 'ICICI Credit ••8812', anomaly: true },
-    { id: 'TX-9403', merchant: 'Cult.Fit Annual Gym', category: 'Health & Fitness', amount: 2500, date: '16 Aug, 2025', account: 'HDFC Auto-Debit', isRecurring: true },
-    { id: 'TX-9404', merchant: 'Amazon Web Services Inc', category: 'Cloud & Tech', amount: 4520, date: '15 Aug, 2025', account: 'ICICI Credit ••8812', anomaly: true },
-    { id: 'TX-9405', merchant: 'Blue Tokai Coffee Roasters', category: 'Food & Dining', amount: 480, date: '14 Aug, 2025', account: 'UPI ••9912' },
-    { id: 'TX-9406', merchant: 'Netflix Subscription', category: 'Entertainment', amount: 649, date: '12 Aug, 2025', account: 'ICICI Credit ••8812', isRecurring: true },
-    { id: 'TX-9407', merchant: 'Reliance Jio Fiber 1Gbps', category: 'Utilities', amount: 1499, date: '10 Aug, 2025', account: 'HDFC Salary ••4920', isRecurring: true },
-    { id: 'TX-9408', merchant: 'Apex Consulting Retainer', category: 'Inflow / Revenue', amount: -35000, date: '05 Aug, 2025', account: 'HDFC Salary ••4920' },
-  ];
+  // Semantic search over documents
+  const [semanticQuery, setSemanticQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<DocumentChunkResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const fileName = e.target.files[0].name;
-      setUploadStatus(`Parsing "${fileName}" via OCR & Neural Tokenizer...`);
-      setTimeout(() => {
-        setUploadStatus(`Successfully extracted 42 transactions from "${fileName}". Ledger reconciled!`);
-      }, 1500);
+  const fetchLedgerData = async () => {
+    if (!isAuthenticated) return;
+    try {
+      const [docsData, txData] = await Promise.all([
+        documentsApi.getDocuments().catch(() => []),
+        documentsApi.getTransactions(50, 0, filterCategory).catch(() => ({ items: [] })),
+      ]);
+      setDocuments(docsData);
+      setTransactions(txData.items || []);
+    } catch (err: any) {
+      console.error('Error loading documents/transactions:', err);
     }
   };
 
-  const filtered = initialTransactions.filter((tx) => {
-    const matchesSearch = tx.merchant.toLowerCase().includes(searchQuery.toLowerCase()) || tx.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = filterCategory === 'all' || tx.category.toLowerCase().includes(filterCategory.toLowerCase());
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    fetchLedgerData();
+  }, [isAuthenticated, filterCategory]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    setIsUploading(true);
+    setUploadStatus(`Uploading "${file.name}" to ingestion pipeline...`);
+
+    try {
+      const doc = await documentsApi.uploadDocument(file);
+      setUploadStatus(`Document "${file.name}" successfully parsed! Extracted ${doc.total_records} records.`);
+      fetchLedgerData();
+    } catch (err: any) {
+      setUploadStatus(`Upload failed: ${err.message || 'Error processing document.'}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSemanticSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!semanticQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const res = await documentsApi.searchDocuments(semanticQuery, 4);
+      setSearchResults(res.results || []);
+    } catch (err: any) {
+      alert(err.message || 'Semantic document search failed.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24">
@@ -223,48 +258,85 @@ export const FinancialDocumentsView: React.FC = () => {
           </div>
         </div>
 
+        {/* Semantic Document Search (Stage 6 / Stage 9) */}
+        <div className="p-4 rounded-xl bg-[#111319] border border-white/5 flex flex-col gap-3">
+          <form onSubmit={handleSemanticSearch} className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              placeholder="Semantic search query across statements (e.g. 'flight tickets', 'medical expenses')..."
+              value={semanticQuery}
+              onChange={(e) => setSemanticQuery(e.target.value)}
+              className="flex-1 bg-[#191c21] text-xs text-[#e2e2ea] px-3.5 py-2 rounded-xl border border-white/10 focus:border-[#00f0ff] focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={isSearching}
+              className="px-4 py-2 bg-[#00f0ff] hover:bg-[#00f0ff]/80 text-[#002d6e] text-xs font-bold rounded-xl font-['JetBrains_Mono'] transition-all disabled:opacity-50"
+            >
+              {isSearching ? 'Searching Vectors...' : 'Search Documents'}
+            </button>
+          </form>
+
+          {searchResults.length > 0 && (
+            <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+              <span className="font-['JetBrains_Mono'] text-[11px] text-[#00dbe9] uppercase font-bold">
+                Retrieved Vector Evidence ({searchResults.length} chunks)
+              </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {searchResults.map((chk) => (
+                  <div key={chk.chunk_id} className="p-3 rounded-xl bg-[#191c21] border border-[#00f0ff]/20 flex flex-col gap-1.5 text-xs">
+                    <div className="flex items-center justify-between text-[10px] font-['JetBrains_Mono'] text-[#849495]">
+                      <span>Chunk #{chk.chunk_index}</span>
+                      <span className="text-[#00e296] font-bold">Score: {(chk.score * 100).toFixed(1)}%</span>
+                    </div>
+                    <p className="text-[#b9cacb] line-clamp-3 font-mono text-[11px]">{chk.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Transactions Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-['JetBrains_Mono']">
             <thead>
               <tr className="border-b border-white/5 text-[#849495] uppercase text-[10px]">
                 <th className="py-2.5 px-3">Date</th>
-                <th className="py-2.5 px-3">Merchant / Entity</th>
+                <th className="py-2.5 px-3">Description / Merchant</th>
                 <th className="py-2.5 px-3">Category</th>
-                <th className="py-2.5 px-3">Account</th>
+                <th className="py-2.5 px-3">Type</th>
                 <th className="py-2.5 px-3">Status</th>
                 <th className="py-2.5 px-3 text-right">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filtered.map((tx) => (
-                <tr key={tx.id} className="hover:bg-[#1d2025]/60 transition-colors">
-                  <td className="py-3 px-3 text-[#849495] whitespace-nowrap">{tx.date}</td>
-                  <td className="py-3 px-3 font-semibold text-[#e2e2ea] whitespace-nowrap flex items-center gap-2">
-                    <span>{tx.merchant}</span>
-                    {tx.anomaly && (
-                      <span className="px-1.5 py-0.2 rounded bg-[#93000a]/50 text-[#ffb4ab] text-[9px] font-bold">
-                        SPIKE
+              {transactions.length > 0 ? (
+                transactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-[#1d2025]/60 transition-colors">
+                    <td className="py-3 px-3 text-[#849495] whitespace-nowrap">{tx.transaction_date}</td>
+                    <td className="py-3 px-3 font-semibold text-[#e2e2ea] whitespace-nowrap">
+                      {tx.description}
+                    </td>
+                    <td className="py-3 px-3 text-[#b9cacb] whitespace-nowrap">{tx.category}</td>
+                    <td className="py-3 px-3 text-[#849495] whitespace-nowrap">{tx.transaction_type}</td>
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <span className="flex items-center gap-1 text-[#00e296] text-[10px]">
+                        <CheckCircle2 className="w-3 h-3" /> Reconciled
                       </span>
-                    )}
-                    {tx.isRecurring && (
-                      <span className="px-1.5 py-0.2 rounded bg-[#0068ed]/20 text-[#7df4ff] text-[9px]">
-                        RECURRING
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-3 text-[#b9cacb] whitespace-nowrap">{tx.category}</td>
-                  <td className="py-3 px-3 text-[#849495] whitespace-nowrap">{tx.account}</td>
-                  <td className="py-3 px-3 whitespace-nowrap">
-                    <span className="flex items-center gap-1 text-[#00e296] text-[10px]">
-                      <CheckCircle2 className="w-3 h-3" /> Reconciled
-                    </span>
-                  </td>
-                  <td className={`py-3 px-3 text-right font-bold whitespace-nowrap ${tx.amount < 0 ? 'text-[#00e296]' : 'text-[#e2e2ea]'}`}>
-                    {tx.amount < 0 ? `+₹${Math.abs(tx.amount).toLocaleString('en-IN')}` : `₹${tx.amount.toLocaleString('en-IN')}`}
+                    </td>
+                    <td className={`py-3 px-3 text-right font-bold whitespace-nowrap ${tx.transaction_type === 'CREDIT' ? 'text-[#00e296]' : 'text-[#e2e2ea]'}`}>
+                      {tx.transaction_type === 'CREDIT' ? `+₹${Number(tx.amount).toLocaleString('en-IN')}` : `₹${Number(tx.amount).toLocaleString('en-IN')}`}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-[#849495]">
+                    No transactions recorded. Drop bank statement above to extract data.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -272,3 +344,4 @@ export const FinancialDocumentsView: React.FC = () => {
     </div>
   );
 };
+

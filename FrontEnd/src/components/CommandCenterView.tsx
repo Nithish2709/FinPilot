@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   ArrowDownLeft, 
@@ -17,6 +17,11 @@ import {
   Eye,
   Sliders
 } from 'lucide-react';
+import { dashboardApi } from '../api/dashboard';
+import { subscriptionsApi } from '../api/subscriptions';
+import { goalsApi } from '../api/goals';
+import { DashboardResponse, AnalyticsResponse, SubscriptionRecord, Goal } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface CommandCenterViewProps {
   onNavigateToScenario: () => void;
@@ -27,18 +32,61 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
   onNavigateToScenario,
   onNavigateToAssistant
 }) => {
+  const { isAuthenticated } = useAuth();
   const [horizon, setHorizon] = useState<'30D' | '90D' | '1Y'>('90D');
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [executedOptimization, setExecutedOptimization] = useState(false);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
 
-  const categories = [
-    { name: 'Housing', percent: 38, color: '#00f0ff' },
-    { name: 'Food & Dining', percent: 18, color: '#b0c6ff' },
-    { name: 'Tech / Subs', percent: 14, color: '#00e296' },
-    { name: 'Transport', percent: 9, color: '#ffb4ab' },
-    { name: 'Discretionary', percent: 12, color: '#e2e2ea' },
-    { name: 'Sinking Fund', percent: 9, color: '#4dffb1' },
+  const fetchTelemetry = async () => {
+    if (!isAuthenticated) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const [dashData, analyticsData, subsData, goalsData] = await Promise.all([
+        dashboardApi.getDashboard().catch(() => null),
+        dashboardApi.getAnalytics().catch(() => null),
+        subscriptionsApi.getSubscriptions().catch(() => []),
+        goalsApi.getGoals().catch(() => []),
+      ]);
+      setDashboard(dashData);
+      setAnalytics(analyticsData);
+      setSubscriptions(subsData);
+      setGoals(goalsData);
+    } catch (err: any) {
+      setError(err.message || 'Failed to retrieve telemetry data.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTelemetry();
+  }, [isAuthenticated]);
+
+  const palette = ['#00f0ff', '#b0c6ff', '#00e296', '#ffb4ab', '#e2e2ea', '#4dffb1'];
+
+  const categories = dashboard?.top_categories?.map((cat, idx) => ({
+    name: cat.category,
+    amount: Number(cat.amount),
+    percent: Math.round(Number(cat.percentage)),
+    color: palette[idx % palette.length],
+  })) || [
+    { name: 'General', amount: 0, percent: 100, color: '#00f0ff' }
   ];
+
+  const totalCommitted = dashboard?.upcoming_obligations?.reduce((acc, curr) => acc + Number(curr.expected_amount), 0) || 0;
+  const currentBalance = Number(dashboard?.current_balance || 0);
+  const monthlyIncome = Number(dashboard?.monthly_income || 0);
+  const monthlyExpenses = Number(dashboard?.monthly_expenses || 0);
+  const netCashflow = Number(dashboard?.net_cashflow || 0);
+  const safeBuffer = Math.max(0, currentBalance - totalCommitted);
+  const burnRatio = monthlyIncome > 0 ? ((monthlyExpenses / monthlyIncome) * 100).toFixed(1) : '0.0';
+
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24">
@@ -105,22 +153,13 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
           </div>
           <div className="mt-2">
             <span className="font-['JetBrains_Mono'] text-2xl font-bold text-[#e2e2ea] tracking-tight">
-              ₹3,42,850
+              ₹{currentBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs text-[#00e296] font-['JetBrains_Mono'] flex items-center gap-1 font-medium">
-              <TrendingUp className="w-3 h-3" /> +4.2% vs Jul
+              <TrendingUp className="w-3 h-3" /> Net: ₹{netCashflow.toLocaleString('en-IN')}
             </span>
-            {/* Mini sparkline */}
-            <svg className="w-16 h-5" viewBox="0 0 60 20">
-              <path
-                d="M 0 16 Q 15 14 25 10 T 45 6 T 60 3"
-                fill="none"
-                stroke="#00e296"
-                strokeWidth="2"
-              />
-            </svg>
           </div>
         </div>
 
@@ -134,12 +173,12 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
           </div>
           <div className="mt-2">
             <span className="font-['JetBrains_Mono'] text-2xl font-bold text-[#e2e2ea] tracking-tight">
-              ₹1,25,000
+              ₹{monthlyIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="mt-3 flex items-center gap-1.5 text-xs text-[#849495] truncate">
             <span className="w-1.5 h-1.5 rounded-full bg-[#4dffb1]"></span>
-            <span className="truncate">Salary & consulting retai...</span>
+            <span className="truncate">Stage 4 Cashflow Engine</span>
           </div>
         </div>
 
@@ -153,11 +192,11 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
           </div>
           <div className="mt-2">
             <span className="font-['JetBrains_Mono'] text-2xl font-bold text-[#e2e2ea] tracking-tight">
-              ₹68,400
+              ₹{monthlyExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="mt-3 text-xs text-[#849495] font-['JetBrains_Mono']">
-            Burn Ratio <span className="text-[#dbfcff] font-semibold">54.7% of Inflow</span>
+            Burn Ratio <span className="text-[#dbfcff] font-semibold">{burnRatio}% of Inflow</span>
           </div>
         </div>
 
@@ -171,11 +210,11 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
           </div>
           <div className="mt-2">
             <span className="font-['JetBrains_Mono'] text-2xl font-bold text-[#e2e2ea] tracking-tight">
-              ₹32,000
+              ₹{totalCommitted.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="mt-3 text-xs text-[#849495] truncate">
-            Rent, Bills, Insurance, Subs
+            {dashboard?.upcoming_obligations?.length || 0} Upcoming Obligations
           </div>
         </div>
 
@@ -189,16 +228,14 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="font-['JetBrains_Mono'] text-2xl font-bold text-[#00e296] tracking-tight">
-              ₹24,600
+              ₹{safeBuffer.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs">
-            <span className="text-[#849495] text-[11px]">Unallocated Free Flow</span>
-            <span className="px-1.5 py-0.5 rounded bg-[#0068ed]/20 text-[#7df4ff] font-['JetBrains_Mono'] font-bold text-[10px]">
-              ₹820/DAY
-            </span>
+            <span className="text-[#849495] text-[11px]">Liquid - Obligations</span>
           </div>
         </div>
+
       </div>
 
       {/* Main Analytical Grid */}
@@ -450,18 +487,27 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 {/* SVG segments using stroke-dasharray & stroke-dashoffset */}
                 {/* Circumference = 2 * PI * 38 = ~238.76 */}
-                {/* Housing 38% -> 90.7 */}
-                <circle cx="50" cy="50" r="38" fill="transparent" stroke="#00f0ff" strokeWidth="9" strokeDasharray="90.7 238.7" strokeDashoffset="0" />
-                {/* Food 18% -> 43 */}
-                <circle cx="50" cy="50" r="38" fill="transparent" stroke="#b0c6ff" strokeWidth="9" strokeDasharray="43 238.7" strokeDashoffset="-90.7" />
-                {/* Tech/Subs 14% -> 33.4 */}
-                <circle cx="50" cy="50" r="38" fill="transparent" stroke="#00e296" strokeWidth="9" strokeDasharray="33.4 238.7" strokeDashoffset="-133.7" />
-                {/* Discretionary 12% -> 28.6 */}
-                <circle cx="50" cy="50" r="38" fill="transparent" stroke="#e2e2ea" strokeWidth="9" strokeDasharray="28.6 238.7" strokeDashoffset="-167.1" />
-                {/* Transport 9% -> 21.5 */}
-                <circle cx="50" cy="50" r="38" fill="transparent" stroke="#ffb4ab" strokeWidth="9" strokeDasharray="21.5 238.7" strokeDashoffset="-195.7" />
-                {/* Sinking Fund 9% -> 21.5 */}
-                <circle cx="50" cy="50" r="38" fill="transparent" stroke="#4dffb1" strokeWidth="9" strokeDasharray="21.5 238.7" strokeDashoffset="-217.2" />
+                {categories.map((cat, idx) => {
+                  const circumference = 238.76;
+                  // Calculate stroke-dashoffset based on previous segments
+                  let previousPercent = 0;
+                  for (let i = 0; i < idx; i++) {
+                    previousPercent += categories[i].percent;
+                  }
+                  const strokeDasharray = `${(cat.percent / 100) * circumference} ${circumference}`;
+                  const strokeDashoffset = -((previousPercent / 100) * circumference);
+                  return (
+                    <circle 
+                      key={idx}
+                      cx="50" cy="50" r="38" 
+                      fill="transparent" 
+                      stroke={cat.color} 
+                      strokeWidth="9" 
+                      strokeDasharray={strokeDasharray} 
+                      strokeDashoffset={strokeDashoffset} 
+                    />
+                  );
+                })}
               </svg>
 
               {/* Center Text */}
@@ -504,24 +550,27 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
 
             {/* List of items */}
             <div className="flex flex-col gap-2">
-              {[
-                { name: 'Netflix Premium', price: '₹649', sub: 'Renews in 6 days • Usage: High' },
-                { name: 'Spotify Family', price: '₹179', sub: 'Renews in 14 days • 5 seats' },
-                { name: 'GitHub Copilot Pro', price: '₹850', sub: 'Renews in 18 days • Dev utility' },
-                { name: 'AWS Cloud Dev', price: '₹2,420', sub: '+8% spike, Usage variable • Auto-settle', alert: true },
-                { name: 'Gym Membership', price: '₹2,500', sub: 'Auto-debit active • 24 visits' }
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-[#1d2025]/50 border border-white/5 hover:border-white/10 transition-colors">
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-medium text-[#e2e2ea] truncate">{item.name}</span>
-                    <span className="text-[10px] text-[#849495] truncate font-['JetBrains_Mono']">{item.sub}</span>
+              {subscriptions.length > 0 ? subscriptions.slice(0, 5).map((sub, i) => {
+                const daysUntil = sub.next_expected_date 
+                  ? Math.ceil((new Date(sub.next_expected_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
+                  : null;
+                const daysText = daysUntil !== null ? `Renews in ${daysUntil} days` : `Freq: ${sub.frequency}`;
+                
+                return (
+                  <div key={sub.id || i} className="flex items-center justify-between p-2 rounded-xl bg-[#1d2025]/50 border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-medium text-[#e2e2ea] truncate">{sub.merchant}</span>
+                      <span className="text-[10px] text-[#849495] truncate font-['JetBrains_Mono']">{daysText} • {sub.status}</span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="font-['JetBrains_Mono'] text-xs font-bold text-[#e2e2ea]">₹{Number(sub.average_amount).toLocaleString('en-IN')}</span>
+                      <span className="text-[10px] text-[#849495] block">/mo</span>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-['JetBrains_Mono'] text-xs font-bold text-[#e2e2ea]">{item.price}</span>
-                    <span className="text-[10px] text-[#849495] block">/mo</span>
-                  </div>
-                </div>
-              ))}
+                );
+              }) : (
+                <div className="text-xs text-[#849495] p-2 text-center">No active subscriptions detected.</div>
+              )}
             </div>
 
             <button 
@@ -548,50 +597,31 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
             </div>
 
             <div className="flex flex-col gap-3">
-              {/* Emergency Vault */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#e2e2ea] font-medium">6-Month Emergency Vault</span>
-                  <span className="font-['JetBrains_Mono'] text-[#00e296] font-bold">60%</span>
-                </div>
-                <div className="w-full bg-[#282a30] h-2 rounded-full overflow-hidden">
-                  <div className="bg-[#00e296] h-full rounded-full" style={{ width: '60%' }}></div>
-                </div>
-                <div className="flex items-center justify-between text-[10px] font-['JetBrains_Mono'] text-[#849495]">
-                  <span>₹1,80,000 / ₹3,00,000</span>
-                  <span>Target: Dec 2025</span>
-                </div>
-              </div>
+              {goals.length > 0 ? goals.slice(0, 3).map((g, idx) => {
+                const current = Number(g.current_amount || 0);
+                const target = Number(g.target_amount || 1);
+                const percent = g.percentage_complete !== undefined ? Number(g.percentage_complete) : Math.min(100, Math.round((current / target) * 100));
+                const colors = ['#00e296', '#00f0ff', '#b0c6ff'];
+                const color = colors[idx % colors.length];
 
-              {/* Electric Vehicle Fund */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#e2e2ea] font-medium">Electric Vehicle Fund</span>
-                  <span className="font-['JetBrains_Mono'] text-[#00f0ff] font-bold">63%</span>
-                </div>
-                <div className="w-full bg-[#282a30] h-2 rounded-full overflow-hidden">
-                  <div className="bg-[#00f0ff] h-full rounded-full" style={{ width: '63%' }}></div>
-                </div>
-                <div className="flex items-center justify-between text-[10px] font-['JetBrains_Mono'] text-[#849495]">
-                  <span>₹95,000 / ₹1,50,000</span>
-                  <span>Auto: ₹10,000/mo</span>
-                </div>
-              </div>
-
-              {/* Annual Travel Buffer */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#e2e2ea] font-medium">Annual Travel Buffer</span>
-                  <span className="font-['JetBrains_Mono'] text-[#b0c6ff] font-bold">70%</span>
-                </div>
-                <div className="w-full bg-[#282a30] h-2 rounded-full overflow-hidden">
-                  <div className="bg-[#b0c6ff] h-full rounded-full" style={{ width: '70%' }}></div>
-                </div>
-                <div className="flex items-center justify-between text-[10px] font-['JetBrains_Mono'] text-[#849495]">
-                  <span>₹42,000 / ₹60,000</span>
-                  <span>₹18,000 to complete</span>
-                </div>
-              </div>
+                return (
+                  <div key={g.id || idx} className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#e2e2ea] font-medium">{g.name}</span>
+                      <span className="font-['JetBrains_Mono'] font-bold" style={{ color }}>{percent}%</span>
+                    </div>
+                    <div className="w-full bg-[#282a30] h-2 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: color }}></div>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-['JetBrains_Mono'] text-[#849495]">
+                      <span>₹{current.toLocaleString('en-IN')} / ₹{target.toLocaleString('en-IN')}</span>
+                      <span>{g.target_date ? `Target: ${g.target_date}` : 'Ongoing'}</span>
+                    </div>
+                  </div>
+                );
+              }) : (
+                <div className="text-xs text-[#849495] text-center p-2">No target vectors configured.</div>
+              )}
             </div>
           </div>
         </div>

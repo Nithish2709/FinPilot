@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   GitBranch, 
   AlertTriangle, 
@@ -16,29 +16,64 @@ import {
   RefreshCw,
   BellRing
 } from 'lucide-react';
+import { purchasesApi } from '../api/purchases';
+import { PurchaseAnalysisResponse } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 export const ScenarioEngineView: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   const [assetName, setAssetName] = useState('Pro Developer Laptop 16-inch');
   const [amount, setAmount] = useState<number>(60000);
   const [plannedDate, setPlannedDate] = useState('2025-08-24');
+  const [safetyBuffer, setSafetyBuffer] = useState<number>(15000);
   const [protocol, setProtocol] = useState<'cash' | 'emi-3m' | 'wait-inflow'>('cash');
-  const [lockedBeta, setLockedBeta] = useState(false);
+  const [analysis, setAnalysis] = useState<PurchaseAnalysisResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runSimulation = async () => {
+    if (!isAuthenticated) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await purchasesApi.analyzePurchase({
+        amount: Number(amount),
+        description: assetName,
+        purchase_date: plannedDate || undefined,
+        safety_buffer: Number(safetyBuffer),
+      });
+      setAnalysis(res);
+    } catch (err: any) {
+      setError(err.message || 'Failed to simulate purchase scenario.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    runSimulation();
+  }, [amount, plannedDate, safetyBuffer, isAuthenticated]);
+
   const [forcedAlpha, setForcedAlpha] = useState(false);
+  const [lockedBeta, setLockedBeta] = useState(false);
 
-  // Dynamic calculations
-  const startingLiquidity = 85000;
-  const committedObligations = 22000;
-  const payrollCredit = 90000;
+  const startingLiquidity = Number(analysis?.current_balance || 85000);
+  const committedObligations = Number(analysis?.upcoming_obligations || 22000);
+  const projectedBalance = Number(analysis?.projected_balance || (startingLiquidity - amount));
+  const bufferDifference = Number(analysis?.buffer_difference || (projectedBalance - safetyBuffer));
+  const nowScenario = analysis?.scenarios?.['purchase_now'];
+  const waitScenario = analysis?.scenarios?.['wait'] || analysis?.scenarios?.['wait_scenario'];
 
-  // Scenario Alpha (Buy Today)
+  // Protocol specific calculation
   const alphaCost = protocol === 'emi-3m' ? Math.round(amount / 3) : amount;
   const alphaBuffer = startingLiquidity - committedObligations - alphaCost;
-  const alphaRatio = ((alphaBuffer / startingLiquidity) * 100).toFixed(1);
+  const alphaRatio = startingLiquidity > 0 ? Math.max(0, Math.round((alphaBuffer / startingLiquidity) * 100)) : 0;
 
-  // Scenario Beta (Wait for Inflow on Sept 1)
+  const payrollCredit = 90000;
   const betaCost = amount;
   const betaBuffer = startingLiquidity - committedObligations + payrollCredit - betaCost;
-  const betaRatio = ((betaBuffer / (startingLiquidity + payrollCredit - committedObligations)) * 100).toFixed(1);
+  const betaRatio = startingLiquidity > 0 ? Math.min(100, Math.max(0, Math.round((betaBuffer / (startingLiquidity + payrollCredit)) * 100))) : 85;
+
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-24">

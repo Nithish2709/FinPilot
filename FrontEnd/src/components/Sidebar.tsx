@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Bot, 
   LayoutGrid, 
@@ -10,14 +10,19 @@ import {
   Radio,
   Terminal,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
-import { ViewMode } from '../types';
+import { ViewMode, Conversation } from '../types';
+import { chatApi } from '../api/chat';
+import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
   currentView: ViewMode;
   onSelectView: (view: ViewMode) => void;
   onOpenNewChat: () => void;
+  onSelectConversation?: (conversationId: string) => void;
+  selectedConversationId?: string;
   onOpenPromptModal: () => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
@@ -27,10 +32,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentView,
   onSelectView,
   onOpenNewChat,
+  onSelectConversation,
+  selectedConversationId,
   onOpenPromptModal,
   isOpenMobile,
   onCloseMobile
 }) => {
+  const { isAuthenticated } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLoadingConversations(true);
+      chatApi.getConversations(20)
+        .then((res: any) => {
+          if (Array.isArray(res)) {
+            setConversations(res);
+          } else if (res && Array.isArray(res.items)) {
+            setConversations(res.items);
+          } else {
+            setConversations([]);
+          }
+        })
+        .catch(() => {
+          setConversations([]);
+        })
+        .finally(() => {
+          setLoadingConversations(false);
+        });
+    } else {
+      setConversations([]);
+    }
+  }, [isAuthenticated, selectedConversationId]);
+
   const navItems: { id: ViewMode; label: string; icon: React.ReactNode; colorClass: string }[] = [
     { 
       id: 'ai-assistant', 
@@ -67,30 +102,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Financial Documents', 
       icon: <FileText className="w-4 h-4 text-[#849495]" />, 
       colorClass: 'text-[#849495]' 
-    }
-  ];
-
-  const neuralMemories = [
-    {
-      group: 'Today',
-      items: [
-        { label: 'Can I buy a ₹60,000 laptop?', view: 'ai-assistant' as ViewMode },
-        { label: 'Monthly Cashflow Audit', view: 'command-center' as ViewMode }
-      ]
-    },
-    {
-      group: 'Yesterday',
-      items: [
-        { label: 'Subscription Audit & Purge', view: 'subscriptions' as ViewMode },
-        { label: 'Emergency Fund Goal', view: 'budgets-goals' as ViewMode }
-      ]
-    },
-    {
-      group: 'Previous 7 Days',
-      items: [
-        { label: 'August Food Spending +23%', view: 'command-center' as ViewMode },
-        { label: 'Tax Reserve Projection', view: 'scenario-engine' as ViewMode }
-      ]
     }
   ];
 
@@ -175,32 +186,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </nav>
           </div>
 
-          {/* Neural Memory */}
-          <div className="flex flex-col gap-3 pt-2">
+          {/* Dynamic Neural Memory / Conversation History */}
+          <div className="flex flex-col gap-2 pt-2">
             <span className="font-['JetBrains_Mono'] text-[10px] text-[#849495] uppercase px-1 tracking-wider font-semibold flex items-center justify-between">
               <span>Neural Memory</span>
-              <span className="text-[9px] text-[#00dbe9] font-normal">Indexed</span>
+              <span className="text-[9px] text-[#00dbe9] font-normal">
+                {loadingConversations ? 'Syncing...' : `${conversations?.length || 0} Active`}
+              </span>
             </span>
 
-            {neuralMemories.map((group, idx) => (
-              <div key={idx} className="flex flex-col gap-1">
-                <span className="font-['JetBrains_Mono'] text-[10px] text-[#849495]/70 px-1 font-medium">
-                  {group.group}
-                </span>
-                {group.items.map((item, itemIdx) => (
-                  <button
-                    key={itemIdx}
-                    onClick={() => {
-                      onSelectView(item.view);
-                      if (window.innerWidth < 1024) onCloseMobile();
-                    }}
-                    className="truncate px-2 py-1 rounded text-left text-xs text-[#b9cacb] hover:bg-[#1d2025] hover:text-[#dbfcff] transition-colors"
-                  >
-                    {item.label}
-                  </button>
-                ))}
+            {(!Array.isArray(conversations) || conversations.length === 0) ? (
+              <div className="px-2 py-3 text-center border border-dashed border-white/5 rounded-lg">
+                <p className="text-[11px] text-[#849495]">
+                  {isAuthenticated ? 'No prior analyses. Start a chat!' : 'Sign in to sync neural memory'}
+                </p>
               </div>
-            ))}
+            ) : (
+              <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                {conversations.map((conv) => {
+                  const isSelected = selectedConversationId === conv.id;
+                  return (
+                    <button
+                      key={conv.id}
+                      onClick={() => {
+                        if (onSelectConversation) {
+                          onSelectConversation(conv.id);
+                        } else {
+                          onSelectView('ai-assistant');
+                        }
+                        if (window.innerWidth < 1024) onCloseMobile();
+                      }}
+                      className={`
+                        flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors
+                        ${isSelected 
+                          ? 'bg-[#282a30] text-[#7df4ff] font-medium' 
+                          : 'text-[#b9cacb] hover:bg-[#1d2025] hover:text-[#dbfcff]'
+                        }
+                      `}
+                    >
+                      <MessageSquare className="w-3 h-3 shrink-0 text-[#00dbe9]" />
+                      <span className="truncate">{conv.title || 'Analysis Session'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Antigravity Prompt Trigger Pill */}

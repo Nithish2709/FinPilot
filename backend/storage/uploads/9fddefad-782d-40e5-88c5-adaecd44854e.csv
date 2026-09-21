@@ -1,0 +1,61 @@
+id,transaction_date,merchant,description,amount,currency,transaction_type,category,subcategory,is_recurring
+TXN0001,2026-06-01,Salary - ABC Technologies,Monthly salary,75000,INR,CREDIT,Income,Salary,False
+TXN0002,2026-06-02,House Rent,Monthly rent,18000,INR,DEBIT,Housing,Rent,True
+TXN0003,2026-06-03,BigBasket,Groceries,3200,INR,DEBIT,Food,Groceries,False
+TXN0004,2026-06-04,Swiggy,Food delivery,850,INR,DEBIT,Food,Dining,False
+TXN0005,2026-06-05,Amazon Prime,Monthly subscription,299,INR,DEBIT,Subscriptions,Streaming,True
+TXN0006,2026-06-06,Netflix,Monthly subscription,649,INR,DEBIT,Subscriptions,Streaming,True
+TXN0007,2026-06-08,Uber,Cab,520,INR,DEBIT,Transport,Taxi,False
+TXN0008,2026-06-10,Electricity Board,Electricity bill,1450,INR,DEBIT,Utilities,Electricity,True
+TXN0009,2026-06-12,Airtel,Mobile bill,699,INR,DEBIT,Utilities,Mobile,True
+TXN0010,2026-06-14,Decathlon,Sports equipment,2200,INR,DEBIT,Shopping,Sports,False
+TXN0011,2026-06-17,Swiggy,Food delivery,780,INR,DEBIT,Food,Dining,False
+TXN0012,2026-06-20,Amazon,Household items,2100,INR,DEBIT,Shopping,Household,False
+TXN0013,2026-06-22,Pharmacy,Medicine,900,INR,DEBIT,Healthcare,Medicine,False
+TXN0014,2026-06-25,Fuel Station,Fuel,1800,INR,DEBIT,Transport,Fuel,False
+TXN0015,2026-06-28,Salary - ABC Technologies,Monthly salary,75000,INR,CREDIT,Income,Salary,False
+TXN0016,2026-07-01,House Rent,Monthly rent,18000,INR,DEBIT,Housing,Rent,True
+TXN0017,2026-07-02,BigBasket,Groceries,3450,INR,DEBIT,Food,Groceries,False
+TXN0018,2026-07-04,Swiggy,Food delivery,920,INR,DEBIT,Food,Dining,False
+TXN0019,2026-07-05,Amazon Prime,Monthly subscription,299,INR,DEBIT,Subscriptions,Streaming,True
+TXN0020,2026-07-06,Netflix,Monthly subscription,649,INR,DEBIT,Subscriptions,Streaming,True
+TXN0021,2026-07-08,Uber,Cab,610,INR,DEBIT,Transport,Taxi,False
+TXN0022,2026-07-10,Electricity Board,Electricity bill,1520,INR,DEBIT,Utilities,Electricity,True
+TXN0023,2026-07-12,Airtel,Mobile bill,699,INR,DEBIT,Utilities,Mobile,True
+TXN0024,2026-07-15,Swiggy,Food delivery,890,INR,DEBIT,Food,Dining,False
+TXN0025,2026-07-18,Myntra,Clothing,2800,INR,DEBIT,Shopping,Clothing,False
+TXN0026,2026-07-20,Amazon,Household items,1700,INR,DEBIT,Shopping,Household,False
+TXN0027,2026-07-23,Fuel Station,Fuel,1900,INR,DEBIT,Transport,Fuel,False
+TXN0028,2026-07-25,Salary - ABC Technologies,Monthly salary,75000,INR,CREDIT,Income,Salary,False
+TXN0029,2026-07-27,Restaurant - Spice Hub,Dinner,1450,INR,DEBIT,Food,Dining,False
+TXN0030,2026-07-29,Salary Advance Refund,Refund,1200,INR,REFUND,Income,Refund,False
+TXN0031,2026-08-01,House Rent,Monthly rent,18000,INR,DEBIT,Housing,Rent,True
+TXN0032,2026-08-02,BigBasket,Groceries,3650,INR,DEBIT,Food,Groceries,False
+TXN0033,2026-08-03,Swiggy,Food delivery,950,INR,DEBIT,Food,Dining,False
+TXN0034,2026-08-05,Amazon Prime,Monthly subscription,299,INR,DEBIT,Subscriptions,Streaming,True
+TXN0035,2026-08-06,Netflix,Monthly subscription,649,INR,DEBIT,Subscriptions,Streaming,True
+TXN0036,2026-08-07,Spotify,Music subscription,119,INR,DEBIT,Subscriptions,Music,True
+TXN0037,2026-08-08,Uber,Cab,580,INR,DEBIT,Transport,Taxi,False
+TXN0038,2026-08-10,Electricity Board,Electricity bill,1490,INR,DEBIT,Utilities,Electricity,True
+TXN0039,2026-08-12,Airtel,Mobile bill,699,INR,DEBIT,Utilities,Mobile,True
+TXN0040,2026-08-13,Swiggy,Food delivery,880,INR,DEBIT,Food,Dining,False
+TXN0041,2026-08-15,Amazon,Household items,2400,INR,DEBIT,Shopping,Household,False
+TXN0042,2026-08-17,Restaurant - Spice Hub,Dinner,1650,INR,DEBIT,Food,Dining,False
+TXN0043,2026-08-19,Fuel Station,Fuel,1950,INR,DEBIT,Transport,Fuel,False
+TXN0044,2026-08-21,Emergency Electronics Store,Laptop accessories,12500,INR,DEBIT,Shopping,Electronics,False
+TXN0045,2026-08-23,Medical Center,Medical expense,3200,INR,DEBIT,Healthcare,Medical,False
+TXN0046,2026-08-25,Salary - ABC Technologies,Monthly salary,75000,INR,CREDIT,Income,Salary,False
+TXN0047,2026-08-26,Internal Transfer to Savings,Savings transfer,10000,INR,TRANSFER,Transfer,Savings,False
+TXN0048,2026-08-28,Swiggy,Food delivery,1100,INR,DEBIT,Food,Dining,False
+TXN0049,2026-09-01,House Rent,Monthly rent,18000,INR,DEBIT,Housing,Rent,True
+TXN0050,2026-09-02,BigBasket,Groceries,3550,INR,DEBIT,Food,Groceries,False
+TXN0051,2026-09-04,Swiggy,Food delivery,1050,INR,DEBIT,Food,Dining,False
+TXN0052,2026-09-05,Amazon Prime,Monthly subscription,299,INR,DEBIT,Subscriptions,Streaming,True
+TXN0053,2026-09-06,Netflix,Monthly subscription,649,INR,DEBIT,Subscriptions,Streaming,True
+TXN0054,2026-09-08,Uber,Cab,620,INR,DEBIT,Transport,Taxi,False
+TXN0055,2026-09-10,Electricity Board,Electricity bill,1510,INR,DEBIT,Utilities,Electricity,True
+TXN0056,2026-09-12,Airtel,Mobile bill,699,INR,DEBIT,Utilities,Mobile,True
+TXN0057,2026-09-14,Swiggy,Food delivery,980,INR,DEBIT,Food,Dining,False
+TXN0058,2026-09-15,Fuel Station,Fuel,2000,INR,DEBIT,Transport,Fuel,False
+TXN0059,2026-09-16,Salary - ABC Technologies,Monthly salary,75000,INR,CREDIT,Income,Salary,False
+TXN0060,2026-09-18,Restaurant - Spice Hub,Dinner,1750,INR,DEBIT,Food,Dining,False

@@ -15,6 +15,7 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [assistantQuery, setAssistantQuery] = useState<string | undefined>(undefined);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(undefined);
 
   const handleNavigateToAssistant = (query?: string) => {
     setAssistantQuery(query);
@@ -23,6 +24,12 @@ export default function App() {
 
   const handleOpenNewChat = () => {
     setAssistantQuery('');
+    setSelectedConversationId(undefined);
+    setCurrentView('ai-assistant');
+  };
+
+  const handleSelectConversation = (conversationId: string) => {
+    setSelectedConversationId(conversationId);
     setCurrentView('ai-assistant');
   };
 
@@ -33,6 +40,8 @@ export default function App() {
         currentView={currentView}
         onSelectView={setCurrentView}
         onOpenNewChat={handleOpenNewChat}
+        onSelectConversation={handleSelectConversation}
+        selectedConversationId={selectedConversationId}
         onOpenPromptModal={() => setIsPromptModalOpen(true)}
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
@@ -57,6 +66,8 @@ export default function App() {
           <AiAssistantView
             onNavigateToScenario={() => setCurrentView('scenario-engine')}
             initialQuery={assistantQuery}
+            conversationId={selectedConversationId}
+            onConversationCreated={(id) => setSelectedConversationId(id)}
           />
         )}
 
